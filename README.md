@@ -75,7 +75,7 @@ cc -D BUFFER_SIZE=42 your_file.c get_next_line.c get_next_line_utils.c -o your_p
 
 Each call follows the same three steps:
 
-![get_next_line — fluxo em 3 etapas](./assets/gnl_3_etapas.svg)
+![get_next_line — fluxo em 3 etapas](gnl_didatico_apresentacao.svg)
 
 ```
 1. fill_stash   → read from fd in BUFFER_SIZE chunks until '\n' is found or EOF
