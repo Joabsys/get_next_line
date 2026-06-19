@@ -119,7 +119,27 @@ Call 3: get_next_line(fd)
 
   read returns 0 (EOF), stash is empty → returns NULL
 ```
+## Main exemplo para testes
+---
+```
+#include<stdio.h>
+#include<fcntl.h>
+int main()
+{
+int fd;
+char *line;
 
+	fd = open("texto.txt",O_RDONLY);
+
+	while((line = get_next_line(fd)))
+	{
+		printf("%s",line);
+		free(line);
+	}
+	close(fd);
+	return(0);
+}
+```
 ### Why the stash and the chunk are dynamically allocated
 
 A fixed-size array (`char stash[BUFFER_SIZE + 1]`) breaks down in two situations:
