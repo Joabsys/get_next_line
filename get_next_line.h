@@ -20,11 +20,8 @@
 #  define BUFFER_SIZE 42
 # endif
 
-char			*gnl(int fd);
 unsigned int	find_char(char *s, char c);
-char			*extract_line(char *stash);
-void			add_chunk(char *stash, char *chunk, int size);
-void			update_stash(char *s);
-void			zero_stash(char *s);
+char			*get_next_line(int fd);
+char			*add_chunk(char *stash, char *chunk);
 
 #endif

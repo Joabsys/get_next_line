@@ -12,57 +12,94 @@
 
 #include "get_next_line.h"
 
+static char	*extract_line(char *stash)
+{
+	unsigned int	i;
+	unsigned int	n;
+	char			*line;
+
+	i = find_char(stash, '\n');
+	if (stash[i] == '\0' && i == 0)
+		return (NULL);
+	if (stash[i] == '\n')
+		line = malloc(i + 2);
+	else
+		line = malloc(i + 1);
+	if (!line)
+		return (NULL);
+	n = 0;
+	while (n < i)
+	{
+		line[n] = stash[n];
+		n++;
+	}
+	if (stash[i] == '\n')
+		line[n++] = '\n';
+	line[n] = '\0';
+	return (line);
+}
+
+static int	fill_stash(int fd, char **stash)
+{
+	char	*chunk;
+	int		r;
+
+	chunk = malloc(BUFFER_SIZE + 1);
+	if (!chunk)
+		return (-1);
+	r = 1;
+	while (r > 0 && !(*stash && (*stash)[find_char(*stash, '\n')] == '\n'))
+	{
+		r = read(fd, chunk, BUFFER_SIZE);
+		if (r > 0)
+		{
+			chunk[r] = '\0';
+			*stash = add_chunk(*stash, chunk);
+		}
+	}
+	free(chunk);
+	return (r);
+}
+
+static char	*update_stash(char *s)
+{
+	unsigned int	i;
+	unsigned int	len;
+	char			*new;
+
+	i = find_char(s, '\n');
+	if (s[i] == '\n')
+		i++;
+	len = 0;
+	while (s[i + len])
+		len++;
+	new = malloc(sizeof(char) * (len + 1));
+	if (!new)
+		return (NULL);
+	len = 0;
+	while (s[i])
+	{
+		new[len] = s[i];
+		len++;
+		i++;
+	}
+	new[len] = '\0';
+	free(s);
+	return (new);
+}
+
 char	*get_next_line(int fd)
 {
-	static char		stash[BUFFER_SIZE + 1];
-	int				r;
-	char			*chunk;
+	static char		*stash;
 	char			*line;
 
 	if (fd < 0 || BUFFER_SIZE < 1)
 		return (NULL);
-	chunk = malloc(BUFFER_SIZE + 1);
-	if (!chunk)
+	if ((fill_stash(fd, &stash)) < 0)
 		return (NULL);
-	while (1)
-	{
-		if (stash[find_char(stash, '\n')] == '\n')
-		{
-			line = extract_line (stash);
-			update_stash (stash);
-			free (chunk);
-			return (line);
-		}
-		r = read (fd, chunk, BUFFER_SIZE);
-		if (r < 0)
-		{
-			free (chunk);
-			return (NULL);
-		}
-		if (r == 0)
-			break ;
-		chunk[r] = '\0';
-		add_chunk (stash, chunk, BUFFER_SIZE);
-	}
-	free (chunk);
-	line = extract_line (stash);
-	update_stash (stash);
+	if (!stash)
+		return (NULL);
+	line = extract_line(stash);
+	stash = update_stash(stash);
 	return (line);
-}
-#include<fcntl.h>
-#include <stdio.h>
-int main(void)
-{
-	int fd;
-	char *line;
-	fd = open("texto.txt", O_RDONLY);
-	if(fd < 0)
-		return(1);
-	while((line = get_next_line(fd)))
-	{
-		printf("%s",line);
-		free(line);
-	}
-	close(fd);
-	return(0);
 }
