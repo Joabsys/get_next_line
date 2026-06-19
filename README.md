@@ -119,7 +119,7 @@ Call 3: get_next_line(fd)
 
   read returns 0 (EOF), stash is empty → returns NULL
 ```
-## Main exemplo para testes
+## Main example for tests
 ---
 ```
 #include<stdio.h>
