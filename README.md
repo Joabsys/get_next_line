@@ -1,129 +1,132 @@
-*This project has been created as part of the 42 curriculum by [jesequie].*
+*Este projeto foi criado como parte do currículo da 42 por [jesequie].*
 
 ---
 
-## Description
+## Descrição
 
-**get_next_line** is a project from the 42 curriculum that consists of writing a function able to read a text file line by line, regardless of the file size or the size of the read buffer used internally. The function must be called repeatedly, returning one line per call, and must keep track of any leftover data between calls without re-reading the file from the beginning.
+**get_next_line** é um projeto do currículo da 42 que consiste em escrever uma função capaz de ler um arquivo de texto linha por linha, independentemente do tamanho do arquivo ou do tamanho do buffer de leitura utilizado internamente. A função deve ser chamada repetidamente, retornando uma linha por chamada, e deve manter o controle de qualquer dado restante entre chamadas sem reler o arquivo desde o início.
 
-This implementation covers the **mandatory part only** (single file descriptor at a time). The bonus part (handling multiple file descriptors simultaneously) was not implemented.
+Esta implementação cobre apenas a **parte obrigatória** (um único descritor de arquivo por vez). A parte bônus (múltiplos descritores de arquivo simultaneamente) não foi implementada.
 
-### Functions implemented
+### Funções implementadas
 
-**Main function:**
+**Função principal:**
 
-| Function | File | Description |
+| Função | Arquivo | Descrição |
 |---|---|---|
-| `get_next_line` | get_next_line.c | Returns the next line read from `fd`, one call at a time |
+| `get_next_line` | get_next_line.c | Retorna a próxima linha lida a partir de `fd`, uma chamada por vez |
 
-**Internal helper (static to get_next_line.c):**
+**Função auxiliar interna:**
 
-| Function | Description |
+| Função | Descrição |
 |---|---|
-| `fill_stash` 	 | Reads from `fd` in chunks of `BUFFER_SIZE` bytes, appending each chunk to the stash, until a `'\n'` is found or `read` reaches EOF/error |
-| `extract_line` | get_next_line_utils.c | Allocates a new buffer and copies the stash content up to (and including) the `'\n'` |
-| `update_stash` | get_next_line_utils.c | Allocates a new buffer with whatever is left in the stash after the extracted line, then frees the old stash |
+| `fill_stash`   | Lê do `fd` em blocos de `BUFFER_SIZE` bytes, adicionando cada bloco ao stash, até encontrar um `'\n'` ou `read` chegar ao EOF/erro |
+| `extract_line` | get_next_line_utils.c | Aloca um novo buffer e copia o conteúdo do stash até o `'\n'` (inclusive) |
+| `update_stash` | get_next_line_utils.c | Aloca um novo buffer com o que sobrou no stash após a linha extraída, depois libera o stash antigo |
 
-**Utility functions:**
+**Funções utilitárias:**
 
-| Function | File | Description |
+| Função | Arquivo | Descrição |
 |---|---|---|
-| `find_char` | get_next_line_utils.c | Returns the index of a given character in a string, or its length if the character is not found |
-| `ft_strlen` | get_next_line_utils.c | Returns the length of a string (local reimplementation — libft is not allowed in this project) |
-| `add_chunk` | get_next_line_utils.c | Allocates a new buffer combining the existing stash with a newly read chunk, then frees the old stash |
+| `find_char` | get_next_line_utils.c | Retorna o índice de um caractere em uma string, ou seu comprimento caso o caractere não seja encontrado |
+| `ft_strlen` | get_next_line_utils.c | Retorna o comprimento de uma string (reimplementação local — libft não é permitida neste projeto) |
+| `add_chunk` | get_next_line_utils.c | Aloca um novo buffer combinando o stash existente com o bloco recém-lido, depois libera o stash antigo |
 
 
 ---
 
-## Instructions
+## Instruções
 
-### Requirements
+### Requisitos
 
-- `cc` compiler
-- Unix-based OS (Linux or macOS)
+- Compilador `cc`
+- Sistema operacional baseado em Unix (Linux ou macOS)
 
-### Compilation
+### Compilação
 
-Clone the repository:
+Clone o repositório:
 
 ```bash
 git clone https://github.com/Joabsys/get_next_line.git
 cd get_next_line
 ```
 
-Since the mandatory part has no Makefile requirement, compile directly with the `BUFFER_SIZE` of your choice passed as a flag:
+Como a parte obrigatória não exige Makefile, compile diretamente com o `BUFFER_SIZE` de sua escolha passado como flag:
 
 ```bash
 cc -Wall -Wextra -Werror -D BUFFER_SIZE=42 get_next_line.c get_next_line_utils.c main.c -o gnl
 ```
+### Verificando vazamento de memoria
+```bash
+valgrind --leak-check=full --show-leak-kinds=all ./seu_progama
+```
 
-### Using get_next_line in your project
+### Usando get_next_line no seu projeto
 
-Copy `get_next_line.c`, `get_next_line_utils.c` and `get_next_line.h` to your project, include the header, and compile with the desired `BUFFER_SIZE`:
+Copie `get_next_line.c`, `get_next_line_utils.c` e `get_next_line.h` para o seu projeto, inclua o header e compile com o `BUFFER_SIZE` desejado:
 
 ```bash
-cc -D BUFFER_SIZE=42 your_file.c get_next_line.c get_next_line_utils.c -o your_program
+cc -D BUFFER_SIZE=42 seu_arquivo.c get_next_line.c get_next_line_utils.c -o seu_programa
 ```
 
 ---
 
-## Algorithm & Data Structure
+## Algoritmo e Estrutura de Dados
 
-### Overview
+### Visão geral
 
-`get_next_line` works around a single constraint: a line can be longer or shorter than `BUFFER_SIZE`, and a single `read()` block can contain more than one line — or only part of one. To solve this, the function keeps a **persistent buffer (the stash)** between calls, declared as `static`, so it survives after the function returns.
+`get_next_line` existe para resolver uma restrição: uma linha pode ser maior ou menor que `BUFFER_SIZE`, e um único bloco lido com `read()` pode conter mais de uma linha — ou apenas parte de uma. Para resolver isso, a função mantém um **buffer persistente (o stash)** entre chamadas, declarado como `static`, para que sobreviva após o retorno da função.
 
-Each call follows the same three steps:
-
-![get_next_line — fluxo em 3 etapas](gnl_didatico_apresentacao.svg)
+Cada chamada segue as mesmas três etapas:
 
 ```
-1. fill_stash   → read from fd in BUFFER_SIZE chunks until '\n' is found or EOF
-2. extract_line → copy from the start of the stash up to (and including) '\n'
-3. update_stash → keep whatever is left after '\n' for the NEXT call
+1. fill_stash   → lê do fd em blocos de BUFFER_SIZE até encontrar '\n' ou EOF
+2. extract_line → copia do início do stash até o '\n' (inclusive)
+3. update_stash → guarda o que sobrou após o '\n' para a PRÓXIMA chamada
 ```
 
-### Why the stash needs to be `static`
+### Por que o stash precisa ser `static`
 
-Without `static`, the stash would be reset on every call, and any leftover data read past the current line's `'\n'` would be lost — the next call would have no way to know it had already been read from the file.
+Sem `static`, o stash seria resetado a cada chamada, e qualquer dado lido além do `'\n'` da linha atual seria perdido — a próxima chamada não teria como saber que aquele trecho já havia sido lido do arquivo.
 
-### Step-by-step execution (example)
+### Execução passo a passo (exemplo)
 
-Given a file containing `"hello\nworld\n"` and `BUFFER_SIZE = 4`:
+Dado um arquivo contendo `"hello\nworld\n"` e `BUFFER_SIZE = 4`:
 
 ```
-Call 1: get_next_line(fd)
+Chamada 1: get_next_line(fd)
 
-  stash = ""                       (static, starts empty)
+  stash = ""                       (static, começa vazio)
   read → chunk = "hell"  → stash = "hell"
-  no '\n' yet → read → chunk = "o\nwo" → stash = "hello\nwo"
-  found '\n' at index 5
+  sem '\n' → read → chunk = "o\nwo" → stash = "hello\nwo"
+  encontrou '\n' no índice 5
 
-  extract_line  → returns "hello\n"
-  update_stash  → stash becomes "wo"
+  extract_line  → retorna "hello\n"
+  update_stash  → stash vira "wo"
 
-  → returns "hello\n"
+  → retorna "hello\n"
 
-Call 2: get_next_line(fd)
+Chamada 2: get_next_line(fd)
 
-  stash = "wo"                     (left over from call 1)
-  no '\n' yet → read → chunk = "rld\n" → stash = "world\n"
-  found '\n' at index 5
+  stash = "wo"                     (sobrou da chamada 1)
+  sem '\n' → read → chunk = "rld\n" → stash = "world\n"
+  encontrou '\n' no índice 5
 
-  extract_line  → returns "world\n"
-  update_stash  → stash becomes ""
+  extract_line  → retorna "world\n"
+  update_stash  → stash vira ""
 
-  → returns "world\n"
+  → retorna "world\n"
 
-Call 3: get_next_line(fd)
+Chamada 3: get_next_line(fd)
 
-  read returns 0 (EOF), stash is empty → returns NULL
+  read retorna 0 (EOF), stash vazio → retorna NULL
 ```
-## Main example for tests
+## Main exemplo para testes
 ---
 ```
 #include<stdio.h>
 #include<fcntl.h>
+#include"get_next_line.h"
 int main()
 {
 int fd;
@@ -140,36 +143,37 @@ char *line;
 	return(0);
 }
 ```
-### Why the stash and the chunk are dynamically allocated
 
-A fixed-size array (`char stash[BUFFER_SIZE + 1]`) breaks down in two situations:
+### Por que o stash e o chunk são alocados dinamicamente
 
-- **`BUFFER_SIZE` very small (e.g. `1`)** — a single line longer than the array would overflow it.
-- **`BUFFER_SIZE` very large (e.g. `10000000`)** — a local fixed-size array of that size on the stack risks a stack overflow.
+Um array de tamanho fixo (`char stash[BUFFER_SIZE + 1]`) falha em dois casos:
 
-Allocating both the `chunk` and the `stash` on the heap with `malloc`, and reallocating the stash (copy + free) every time new data is appended or extracted, makes the function correct for any `BUFFER_SIZE` value, from `1` up to several million, without depending on how long a line in the file actually is.
+- **`BUFFER_SIZE` muito pequeno (ex: `1`)** — uma linha maior que o array causaria overflow.
+- **`BUFFER_SIZE` muito grande (ex: `10000000`)** — um array local desse tamanho na stack causa stack overflow.
 
-### Return value
+Alocar tanto o `chunk` quanto o stash na heap com `malloc`, e realocar o stash (cópia + free) sempre que novos dados são adicionados ou extraídos, torna a função correta para qualquer valor de `BUFFER_SIZE`, de `1` até vários milhões, sem depender do tamanho real de uma linha no arquivo.
 
-`get_next_line` returns a newly allocated string containing the next line (including the trailing `'\n'` if present), or `NULL` when there is nothing left to read (EOF with an empty stash) or when an error occurs. The caller is responsible for freeing the returned line.
+### Valor de retorno
+
+`get_next_line` retorna uma string recém-alocada contendo a próxima linha (incluindo o `'\n'` final, se presente), ou `NULL` quando não há mais nada para ler (EOF com stash vazio) ou quando ocorre um erro. O chamador é responsável por liberar a linha retornada com `free`.
 
 ---
 
-## Resources
+## Recursos
 
-### Documentation & References
+### Documentação e Referências
 
-- [man pages online — read(2)](https://man7.org/linux/man-pages/man2/read.2.html) — official manual page for the `read` syscall used to fill the stash
-- [man pages online — malloc(3)](https://man7.org/linux/man-pages/man3/malloc.3.html) — official manual page for dynamic memory allocation
-- [C Standard Library Reference — cppreference.com](https://en.cppreference.com/w/c) — reference for standard C functions and the `static` storage duration
-- [42 Docs — Norminette](https://github.com/42School/norminette) — project subject and Norminette rules
+- [man pages online — read(2)](https://man7.org/linux/man-pages/man2/read.2.html) — página de manual oficial da syscall `read` usada para preencher o stash
+- [man pages online — malloc(3)](https://man7.org/linux/man-pages/man3/malloc.3.html) — página de manual oficial para alocação dinâmica de memória
+- [Referência da Biblioteca Padrão C — cppreference.com](https://en.cppreference.com/w/c) — referência para funções C padrão e duração de armazenamento `static`
+- [42 Docs — Norminette](https://github.com/42School/norminette) — subject do projeto e regras da Norminette
 
-### AI Usage
+### Uso de IA
 
-**Claude (Anthropic)** was used during the development of this project for the following purposes:
+**Claude (Anthropic)** foi utilizado durante o desenvolvimento deste projeto para os seguintes fins:
 
-- **Conceptual clarification** — understanding how a `static` buffer persists data between separate function calls, and how to split the file-reading logic into a stash that accumulates chunks and a per-call extraction step
-- **Debugging assistance** — identifying issues with pointer advancement inside the stash, a `free(): invalid pointer` crash caused by a misplaced parenthesis in an allocation size, and a segfault on empty files caused by dereferencing a `NULL` stash
-- **README writing** — structuring and writing this documentation file
+- **Esclarecimento conceitual** — entender como um buffer `static` persiste dados entre chamadas separadas de uma função, e como dividir a lógicachunk de leitura de arquivo em um stash que acumula blocos e uma etapa de extração por chamada
+- **Auxílio na depuração** — identificar problemas com avanço de ponteiro dentro do stash, um crash `free(): invalid pointer` causado por um parêntese mal posicionado no tamanho de alocação, e um segfault em arquivos vazios causado por desreferenciamento de stash `NULL`
+- **Escrita do README** — estruturação e redação deste arquivo de documentação
 
-> AI was used exclusively as a learning and support tool. All code was written and understood by the author.
+> A IA foi utilizada exclusivamente como ferramenta de aprendizado e apoio. Todo o código foi escrito e compreendido pelo autor.
