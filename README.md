@@ -159,6 +159,169 @@ Alocar tanto o `chunk` quanto o stash na heap com `malloc`, e realocar o stash (
 
 ---
 
+## Parte Bônus
+
+A parte bônus do projeto exige suportar **múltiplos descritores de arquivo simultaneamente** — ou seja, alternar chamadas de `get_next_line` entre diferentes `fd`s sem que o conteúdo de um interfira no outro:
+
+```c
+fd1 = open("arquivo1.txt", O_RDONLY);
+fd2 = open("arquivo2.txt", O_RDONLY);
+
+get_next_line(fd1);  // lê linha 1 do arquivo1
+get_next_line(fd2);  // lê linha 1 do arquivo2
+get_next_line(fd1);  // lê linha 2 do arquivo1
+```
+
+### O que muda?
+
+A mudança central é o `stash` deixar de ser uma única variável `static` e passar a ser um **array de stashes**, um por `fd`:
+
+```c
+static char	*stash;              // versão atual: 1 fd por vez
+static char	*stash[FD_SIZE_MAX];      // versão bônus: 1 stash por fd
+```
+
+| Função | Alteraçẽs |
+|---|---|
+| `get_next_line` | usa `stash[fd]` em vez de `stash` em todas as ocorrências |
+| `fill_stash` | passa a receber `&stash[fd]` em vez de `&stash` |
+| `extract_line` / `update_stash` | **nenhuma mudança** — essas funções recebem uma `char *` qualquer e não têm conhecimento de que existe um array de stashes por trás |
+
+`FD_SIZE_MAX` precisa de um valor definido (ex: `#define FD_SIZE_MAX 10000`), já que o subject não especifica um limite, e a validação de entrada passa a checar também o limite do array:
+
+```c
+if (fd < 0 || fd >= FD_SIZE_MAX || BUFFER_SIZE < 1)
+    return (NULL);
+```
+
+### Exemplo: alternando entre dois arquivos
+
+Considere dois arquivos abertos ao mesmo tempo, com `BUFFER_SIZE = 4`:
+
+- `fd1` → `"arquivo1.txt"` contendo `"aaaaa\nbbb\n"`
+- `fd2` → `"arquivo2.txt"` contendo `"xxx\nyyy\n"`
+
+E chamadas alternadas: `get_next_line(fd1)`, `get_next_line(fd2)`, `get_next_line(fd1)`, `get_next_line(fd2)`.
+
+#### Sem array (1 stash só) — comportamento incorreto
+
+```
+Chamada 1: get_next_line(fd1)
+
+  stash = ""
+  read(fd1) → chunk = "aaaa" → stash = "aaaa"
+  sem '\n' → read(fd1) → chunk = "a\nbb" → stash = "aaaaa\nbb"
+  encontrou '\n' no índice 5
+
+  extract_line  → retorna "aaaaa\n"
+  update_stash  → stash vira "bb"      (sobra do fd1, guardada na ÚNICA stash)
+
+  → retorna "aaaaa\n"
+
+Chamada 2: get_next_line(fd2)
+
+  stash = "bb"      ← PROBLEMA: deveria começar vazio para o fd2,
+                       mas ainda contém a sobra do fd1!
+  read(fd2) → chunk = "xxx\n" → stash = "bbxxx\n"     ← conteúdo MISTURADO
+  encontrou '\n' no índice 5
+
+  extract_line  → retorna "bbxxx\n"     ← linha ERRADA: mistura os dois arquivos
+
+  → retorna "bbxxx\n"   (deveria ser "xxx\n")
+```
+
+Uma única `stash` não sabe diferenciar "sobra do fd1" de "sobra do fd2" — qualquer alternância entre arquivos corrompe o conteúdo.
+
+#### Com `stash[fd]` (array) — comportamento correto
+
+```
+Chamada 1: get_next_line(fd1)
+
+  stash[fd1] = ""
+  read(fd1) → chunk = "aaaa" → stash[fd1] = "aaaa"
+  sem '\n' → read(fd1) → chunk = "a\nbb" → stash[fd1] = "aaaaa\nbb"
+  encontrou '\n' no índice 5
+
+  extract_line  → retorna "aaaaa\n"
+  update_stash  → stash[fd1] vira "bb"
+
+  → retorna "aaaaa\n"
+
+Chamada 2: get_next_line(fd2)
+
+  stash[fd2] = ""      ← gaveta própria, intacta, nada a ver com fd1
+  read(fd2) → chunk = "xxx\n" → stash[fd2] = "xxx\n"
+  encontrou '\n' no índice 3
+
+  extract_line  → retorna "xxx\n"
+  update_stash  → stash[fd2] vira ""
+
+  → retorna "xxx\n"
+
+Chamada 3: get_next_line(fd1)
+
+  stash[fd1] = "bb"    ← ainda intacto, exatamente como deixamos na chamada 1
+  sem '\n' → read(fd1) → chunk = "b\n" → stash[fd1] = "bbb\n"
+  encontrou '\n' no índice 3
+
+  extract_line  → retorna "bbb\n"
+  update_stash  → stash[fd1] vira ""
+
+  → retorna "bbb\n"
+
+Chamada 4: get_next_line(fd2)
+
+  stash[fd2] = ""
+  read(fd2) → chunk = "yyy\n" → stash[fd2] = "yyy\n"
+  encontrou '\n' no índice 3
+
+  extract_line  → retorna "yyy\n"
+  update_stash  → stash[fd2] vira ""
+
+  → retorna "yyy\n"
+```
+
+Cada `fd` tem sua própria posição no array — alternar chamadas entre arquivos diferentes não interfere no progresso de leitura de nenhum deles.
+## main exemplo parte bonus
+
+#include "get_next_line_bonus.h"
+#include <fcntl.h>
+#include <stdio.h>
+
+int main(void)
+{
+	int		fd;
+	int		fd1;
+	char	*line;
+	int		i;
+
+	fd = open("texto.txt", O_RDONLY);
+	fd1 = open("texto1.txt", O_RDONLY);
+	if (fd < 0 || fd1 < 0)
+		return (1);
+	i = 0;
+	while (i < 10)
+	{
+		while ((line = get_next_line(fd)))
+		{
+			printf("FD [%d]: %s", fd, line);
+			free(line);
+		}
+		printf("\n");
+		while ((line = get_next_line(fd1)))
+		{
+			printf("FD [%d]: %s", fd1, line);
+			free(line);
+		}
+		i++;
+	}
+	close(fd);
+	close(fd1);
+
+	return (0);
+}
+---
+
 ## Recursos
 
 ### Documentação e Referências
