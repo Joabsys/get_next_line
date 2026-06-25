@@ -181,7 +181,7 @@ static char	*stash;              // versão atual: 1 fd por vez
 static char	*stash[FD_SIZE_MAX];      // versão bônus: 1 stash por fd
 ```
 
-| Função | Alteraçẽs |
+| Função | Alterações |
 |---|---|
 | `get_next_line` | usa `stash[fd]` em vez de `stash` em todas as ocorrências |
 | `fill_stash` | passa a receber `&stash[fd]` em vez de `&stash` |
