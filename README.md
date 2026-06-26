@@ -282,7 +282,7 @@ Chamada 4: get_next_line(fd2)
 ```
 
 Cada `fd` tem sua própria posição no array — alternar chamadas entre arquivos diferentes não interfere no progresso de leitura de nenhum deles.
-## main exemplo parte bonus
+## main exemplo parte bônus
 ```
 #include "get_next_line_bonus.h"
 #include <fcntl.h>
