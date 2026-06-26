@@ -136,7 +136,7 @@ char *line;
 
 	while((line = get_next_line(fd)))
 	{
-		printf("%s",line);
+		printf("%s\n",line);
 		free(line);
 	}
 	close(fd);
@@ -303,13 +303,13 @@ int main(void)
 	{
 		while ((line = get_next_line(fd)))
 		{
-			printf("FD [%d]: %s", fd, line);
+			printf("FD [%d]: %s\n", fd, line);
 			free(line);
 		}
 		printf("\n");
 		while ((line = get_next_line(fd1)))
 		{
-			printf("FD [%d]: %s", fd1, line);
+			printf("FD [%d]: %s\n", fd1, line);
 			free(line);
 		}
 		i++;
